@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+train_and_save_model.py
+placementdata.csv
+DS_project.ipynb

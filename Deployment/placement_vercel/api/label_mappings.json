@@ -1,0 +1,11 @@
+{
+  "binary": {
+    "No": 0,
+    "Yes": 1
+  },
+  "status": {
+    "NotPlaced": 0,
+    "Placed": 1
+  },
+  "best_model": "LogisticRegression_ElasticNet"
+}

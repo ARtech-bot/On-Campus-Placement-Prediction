@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Placement Predictor</title>
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --accent:#38bdf8; --text:#e2e8f0; --muted:#94a3b8; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); padding:2rem; }
+  .card { max-width: 640px; margin: 0 auto; background: var(--card); border-radius: 12px; padding: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+  h1 { font-size: 1.4rem; margin-top:0; }
+  label { display:block; font-size:.85rem; color:var(--muted); margin-top:1rem; margin-bottom:.25rem; }
+  input, select { width:100%; padding:.5rem; border-radius:6px; border:1px solid #334155; background:#0f172a; color:var(--text); }
+  button { margin-top:1.5rem; width:100%; padding:.75rem; border:none; border-radius:8px; background:var(--accent); color:#0f172a; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:not-allowed; }
+  #result { margin-top:1.5rem; padding:1rem; border-radius:8px; display:none; }
+  #result.placed { background:#064e3b; }
+  #result.notplaced { background:#7f1d1d; }
+  #error { margin-top:1rem; color:#f87171; display:none; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:0 1rem; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎓 Student Placement Predictor</h1>
+    <p style="color:var(--muted); font-size:.9rem;">Served from a static page on Vercel, calling the FastAPI function at <code>/api/predict</code>.</p>
+
+    <div class="grid">
+      <div>
+        <label>CGPA (0-10)</label>
+        <input id="cgpa" type="number" step="0.1" min="0" max="10" value="7.5" />
+      </div>
+      <div>
+        <label>Soft Skills Rating (0-10)</label>
+        <input id="softSkills" type="number" step="0.1" min="0" max="10" value="6.5" />
+      </div>
+      <div>
+        <label>Internships</label>
+        <input id="internships" type="number" min="0" value="1" />
+      </div>
+      <div>
+        <label>Projects</label>
+        <input id="projects" type="number" min="0" value="2" />
+      </div>
+      <div>
+        <label>Workshops / Certifications</label>
+        <input id="workshops" type="number" min="0" value="1" />
+      </div>
+      <div>
+        <label>Aptitude Test Score (0-100)</label>
+        <input id="aptitude" type="number" min="0" max="100" value="75" />
+      </div>
+      <div>
+        <label>SSC Marks (%)</label>
+        <input id="ssc" type="number" min="0" max="100" value="75" />
+      </div>
+      <div>
+        <label>HSC Marks (%)</label>
+        <input id="hsc" type="number" min="0" max="100" value="75" />
+      </div>
+      <div>
+        <label>Extracurricular Activities</label>
+        <select id="extra"><option>Yes</option><option>No</option></select>
+      </div>
+      <div>
+        <label>Placement Training</label>
+        <select id="training"><option>Yes</option><option>No</option></select>
+      </div>
+    </div>
+
+    <button id="predictBtn">Predict</button>
+    <div id="error"></div>
+    <div id="result"></div>
+  </div>
+
+<script>
+const btn = document.getElementById('predictBtn');
+const resultEl = document.getElementById('result');
+const errorEl = document.getElementById('error');
+
+btn.addEventListener('click', async () => {
+  errorEl.style.display = 'none';
+  resultEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Predicting…';
+
+  const payload = {
+    CGPA: parseFloat(document.getElementById('cgpa').value),
+    Internships: parseInt(document.getElementById('internships').value, 10),
+    Projects: parseInt(document.getElementById('projects').value, 10),
+    "Workshops/Certifications": parseInt(document.getElementById('workshops').value, 10),
+    AptitudeTestScore: parseInt(document.getElementById('aptitude').value, 10),
+    SoftSkillsRating: parseFloat(document.getElementById('softSkills').value),
+    ExtracurricularActivities: document.getElementById('extra').value,
+    PlacementTraining: document.getElementById('training').value,
+    SSC_Marks: parseInt(document.getElementById('ssc').value, 10),
+    HSC_Marks: parseInt(document.getElementById('hsc').value, 10),
+  };
+
+  try {
+    const res = await fetch('/api/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Request failed with status ${res.status}`);
+    }
+    const data = await res.json();
+    resultEl.className = data.placement_status === 'Placed' ? 'placed' : 'notplaced';
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `
+      <strong>${data.placement_status === 'Placed' ? '✅ Likely to be placed' : '⚠️ Unlikely to be placed'}</strong>
+      <div style="margin-top:.5rem; color:var(--muted);">
+        Probability: ${(data.placement_probability * 100).toFixed(2)}% ·
+        Model: ${data.model_used}
+      </div>`;
+  } catch (e) {
+    errorEl.textContent = e.message;
+    errorEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Predict';
+  }
+});
+</script>
+</body>
+</html>
