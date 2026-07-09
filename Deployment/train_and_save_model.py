@@ -3,8 +3,10 @@ train_and_save_model.py
 
 Recreates the preprocessing from your DS_project.ipynb notebook, fixes two
 methodology issues (scaler/SMOTE fit on the full dataset instead of the
-training split only), trains the same candidate models your notebook tried,
-and saves whichever scores highest on the held-out test set.
+training split only), trains the same candidate models your notebook tried
+(minus XGBoost — its compiled binary alone blows past Vercel's 500MB function
+size limit, and it wasn't reliably beating the sklearn models anyway), and
+saves whichever scores highest on the held-out test set.
 
 Artifacts written:
     model.pkl              -> best classifier
@@ -26,7 +28,6 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import RobustScaler
-from xgboost import XGBClassifier
 
 DATA_PATH = "placementdata.csv"
 
@@ -71,7 +72,6 @@ candidates = {
     "RandomForest_gini_sqrt": RandomForestClassifier(
         criterion="gini", max_features="sqrt", random_state=0
     ),
-    "XGBoost": XGBClassifier(eval_metric="logloss", random_state=42),
 }
 
 results = []
