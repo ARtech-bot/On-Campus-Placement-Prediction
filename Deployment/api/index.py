@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Literal
 
 import joblib
-import pandas as pd
+import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -107,16 +107,18 @@ def ensure_model_loaded():
         )
 
 
-def profile_to_dataframe(profile: StudentProfile) -> pd.DataFrame:
+def profile_to_row(profile: StudentProfile) -> np.ndarray:
     mappings = ARTIFACTS["label_mappings"]["binary"]
     data = profile.model_dump(by_alias=True)
     data["ExtracurricularActivities"] = mappings[data["ExtracurricularActivities"]]
     data["PlacementTraining"] = mappings[data["PlacementTraining"]]
-    row = pd.DataFrame([data])
-    return row[ARTIFACTS["feature_columns"]]
+    # Order values exactly as feature_columns.pkl specifies — this must match
+    # the column order the scaler/model were fit on.
+    ordered = [data[col] for col in ARTIFACTS["feature_columns"]]
+    return np.array([ordered], dtype=float)
 
 
-def predict_row(row: pd.DataFrame) -> PredictionResponse:
+def predict_row(row: np.ndarray) -> PredictionResponse:
     scaled = ARTIFACTS["scaler"].transform(row)
     prob_placed = float(ARTIFACTS["model"].predict_proba(scaled)[0, 1])
     pred = 1 if prob_placed >= 0.5 else 0
@@ -141,7 +143,7 @@ def health():
 def predict(profile: StudentProfile):
     ensure_model_loaded()
     try:
-        return predict_row(profile_to_dataframe(profile))
+        return predict_row(profile_to_row(profile))
     except Exception as e:
         logger.exception("Prediction failed")
         raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
@@ -153,7 +155,7 @@ def predict_batch(profiles: list[StudentProfile]):
     if not profiles:
         raise HTTPException(status_code=400, detail="Provide at least one student profile.")
     try:
-        results = [predict_row(profile_to_dataframe(p)) for p in profiles]
+        results = [predict_row(profile_to_row(p)) for p in profiles]
         return BatchPredictionResponse(results=results)
     except Exception as e:
         logger.exception("Batch prediction failed")
