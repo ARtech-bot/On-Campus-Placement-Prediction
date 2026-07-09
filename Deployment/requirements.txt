@@ -1,6 +1,5 @@
 fastapi
 pydantic
 joblib
-pandas
 scikit-learn
-xgboost
+numpy

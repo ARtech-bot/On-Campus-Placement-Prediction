@@ -7,5 +7,5 @@
     "NotPlaced": 0,
     "Placed": 1
   },
-  "best_model": "LogisticRegression_ElasticNet"
+  "best_model": "RandomForest"
 }
